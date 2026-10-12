@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>クイズで学ぶ Claude ｜ 安西工業 × NovaEdge</title>
+<style>
+:root{--paper:#F4F1EA;--card:#FBFAF6;--ink:#1B2A4A;--sub:#5C6478;--line:rgba(27,42,74,.14);--blue:#2B59E8;--teal:#00937F;--sky:#C9DBF4;--red:#C8452F}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--paper);color:var(--ink)}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",Meiryo,sans-serif;
+  -webkit-font-smoothing:antialiased;font-feature-settings:"palt" 1;min-height:100vh;min-height:100dvh;word-break:auto-phrase}
+.wrap{max-width:560px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 20px max(28px,env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.logos{display:flex;align-items:center;gap:8px}
+.logos img.a{height:17px}.logos img.n{height:19px}.logos i{font-style:normal;color:var(--sub);font-size:11px}
+.me{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:#B9BFCB}.dot.on{background:var(--teal)}
+.kick{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:.22em;color:var(--sub);text-transform:uppercase;margin-top:26px}
+h1{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;font-weight:600;font-size:30px;line-height:1.35;margin-top:10px;letter-spacing:.01em}
+.lead{font-size:15px;line-height:1.75;color:var(--sub);margin-top:12px}
+.lbl{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--sub);margin:26px 0 10px}
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tbtn{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:14px 14px 16px;text-align:left;font-family:inherit;color:var(--ink);cursor:pointer;position:relative}
+.tbtn b{display:flex;align-items:center;gap:8px;font-size:15px}
+.tbtn b i{font-style:normal;width:26px;height:26px;border-radius:6px;background:var(--tc);color:#fff;display:grid;place-items:center;font-size:14px}
+.tbtn span{display:block;font-size:13px;color:var(--sub);margin-top:8px;line-height:1.5}
+.tbtn.on{border-color:var(--tc);box-shadow:inset 0 0 0 2px var(--tc)}
+input{width:100%;font:inherit;font-size:16px;padding:14px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);outline:none}
+input:focus{border-color:var(--blue)}
+.btn{display:block;width:100%;margin-top:22px;padding:17px;border:0;border-radius:10px;background:var(--ink);color:#fff;font:inherit;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:.04em}
+.btn:disabled{opacity:.35}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:600}
+.panel{margin-top:22px;border-top:1px solid var(--line);padding-top:22px}
+.lv{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.06em}
+.lv .d{display:inline-flex;gap:3px}.lv .d i{width:7px;height:7px;border-radius:50%;background:var(--line)}.lv .d i.f{background:var(--lc)}
+.qmeta{display:flex;justify-content:space-between;align-items:center;margin-top:24px}
+.qno{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:13px;color:var(--sub);letter-spacing:.12em}
+.q{font-size:21px;font-weight:700;line-height:1.55;margin-top:12px}
+.opts{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;padding:15px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);font:inherit;font-size:16px;line-height:1.5;color:var(--ink);cursor:pointer}
+.opt .n{flex:none;width:26px;height:26px;border-radius:6px;border:1.5px solid var(--ink);display:grid;place-items:center;font-size:14px;font-weight:700;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
+.opt.sel{border-color:var(--blue);box-shadow:inset 0 0 0 2px var(--blue)}.opt.sel .n{background:var(--blue);border-color:var(--blue);color:#fff}
+.opt.ok{border-color:var(--teal);background:#E3F2EE}.opt.ok .n{background:var(--teal);border-color:var(--teal);color:#fff}
+.opt.ng{opacity:.45}
+.opt:disabled{cursor:default}
+.bar{height:4px;border-radius:2px;background:var(--line);margin-top:18px;overflow:hidden}.bar i{display:block;height:100%;background:var(--blue);transition:width .25s linear}
+.tleft{font-size:12px;color:var(--sub);margin-top:6px;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.06em}
+.msg{margin-top:18px;padding:14px 16px;border-radius:10px;background:var(--card);border:1px solid var(--line);font-size:14px;line-height:1.7;color:var(--sub)}
+.res{margin-top:22px;padding:18px;border-radius:12px;background:var(--ink);color:#fff}
+.res .r{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:24px;font-weight:600}
+.res p{font-size:14px;line-height:1.75;color:rgba(255,255,255,.82);margin-top:10px}
+.res .pt{margin-top:12px;font-size:13px;color:#9FD8CC;font-weight:700}
+.score{display:flex;gap:10px;margin-top:18px}
+.score div{flex:1;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--card)}
+.score span{display:block;font-size:11px;color:var(--sub);letter-spacing:.08em}
+.score b{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:300;font-size:30px}
+.wait{text-align:center;padding:46px 0 20px}
+.wait .ring{width:54px;height:54px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--blue);margin:0 auto 18px;animation:sp 1.1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.foot{margin-top:34px;font-size:11px;color:var(--sub);text-align:center;line-height:1.7}
+.link{background:none;border:0;color:var(--sub);text-decoration:underline;font:inherit;font-size:12px;cursor:pointer;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logos"><img class="a" src="anzai.svg" alt="安西工業株式会社"><i>×</i><img class="n" src="nova.png" alt="NovaEdge"></div>
+    <div class="me" id="me"><span class="dot" id="dot"></span><span id="mel">接続中…</span></div>
+  </header>
+  <main id="app"></main>
+  <div class="foot">Claude Code 勉強会＆使い方共有セッション ｜ 2026.10.13<br>回答はチーム・ニックネーム・選んだ番号だけを送信します</div>
+</div>
+<script src="quiz.js"></script>
+<script>
+const NET={base:'https://ntfy.sh/',ctl:TOPIC+'-ctl',ans:TOPIC+'-ans'};
+const LV={'初級':{c:'#00937F',n:1},'中級':{c:'#2B59E8',n:2},'上級':{c:'#1B2A4A',n:3}};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const KEY='anzai-quiz-player-'+TOPIC;
+let S={pid:null,team:null,name:'',sid:null,ans:{},rev:{},joinedSid:null};
+try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(v)S=Object.assign(S,v)}catch(e){}
+if(!S.pid)S.pid=Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+save();
+let CUR=null;      // {type:'open'|'reveal'|'end'|'session', q, deadline}
+let SKEW=0, live=false, sel=null, sending=false;
+
+async function send(obj){
+  for(let i=0;i<3;i++){
+    try{const r=await fetch(NET.base+NET.ans,{method:'POST',body:JSON.stringify(obj)});if(r.ok)return true}catch(e){}
+    await new Promise(r=>setTimeout(r,800*(i+1)));
+  }
+  return false;
+}
+function teamOf(id){return TEAMS.find(t=>t.id===id)}
+function myScore(){let s=0;QUIZ.forEach((q,i)=>{const n=i+1;if(S.rev[n]&&S.ans[n]===S.rev[n])s+=q.pts});return s}
+function lvTag(q){const L=LV[q.level];return `<span class="lv" style="--lc:${L.c};color:${L.c}">${q.level}<span class="d">${[1,2,3].map(k=>`<i class="${k<=L.n?'f':''}"></i>`).join('')}</span>${q.pts}pt</span>`}
+
+function render(){
+  const t=S.team&&teamOf(S.team);
+  $('#mel').textContent=t?`TEAM ${t.id}${S.name?'・'+S.name:''}`:(live?'接続OK':'接続中…');
+  $('#dot').classList.toggle('on',live);
+  if(!t)return renderJoin();
+  if(!CUR||CUR.type==='session'||(CUR.sid&&CUR.sid!==S.sid))return renderWait('まもなくクイズが始まります','前の画面に問題が出ると、ここにも表示されます。');
+  if(CUR.type==='end')return renderEnd();
+  const q=QUIZ[CUR.q-1];if(!q)return renderWait('準備中です','');
+  if(CUR.type==='open')return renderQ(q,CUR.q);
+  if(CUR.type==='reveal')return renderReveal(q,CUR.q);
+}
+function renderJoin(){
+  $('#app').innerHTML=`<div class="kick">Claude Quiz — Join</div><h1>クイズで学ぶ Claude</h1>
+  <p class="lead">チームを選んで参加してください。全12問、初級・中級・上級の3段階です。</p>
+  <div class="lbl">チーム</div><div class="teams">${TEAMS.map(t=>`<button class="tbtn${sel===t.id?' on':''}" style="--tc:${t.c}" data-t="${t.id}"><b><i>${t.id}</i>TEAM ${t.id}</b><span>${t.m.join('・')}</span></button>`).join('')}</div>
+  <div class="lbl">ニックネーム（任意）</div><input id="nm" maxlength="12" placeholder="例：村井" value="${esc(S.name||'')}">
+  <button class="btn" id="go" ${sel?'':'disabled'}>参加する</button>`;
+  document.querySelectorAll('.tbtn').forEach(b=>b.onclick=()=>{sel=b.dataset.t;const v=$('#nm').value;renderJoin();$('#nm').value=v});
+  $('#go').onclick=()=>{S.team=sel;S.name=($('#nm').value||'').trim().slice(0,12);save();maybeJoin();render()};
+}
+function renderWait(h,p){
+  $('#app').innerHTML=`<div class="wait"><div class="ring"></div><h1 style="font-size:24px">${h}</h1><p class="lead">${p}</p></div>
+  <div class="score"><div><span>あなたの得点</span><b>${myScore()}</b></div><div><span>チーム</span><b style="font-size:24px">TEAM ${S.team}</b></div></div>
+  <div style="text-align:center"><button class="link" id="chg">チームを変更する</button></div>`;
+  $('#chg').onclick=()=>{if(confirm('チームを選び直しますか？')){sel=S.team;S.team=null;save();render()}};
+}
+let tick=null;
+function renderQ(q,n){
+  const done=S.ans[n]!=null, closed=Date.now()>CUR.deadline;
+  const pick=done?S.ans[n]:(window._pick&&window._pick.n===n?window._pick.a:null);
+  $('#app').innerHTML=`<div class="qmeta"><span class="qno">QUESTION ${String(n).padStart(2,'0')} / ${QUIZ.length}</span>${lvTag(q)}</div>
+  <div class="q">${esc(q.q)}</div>
+  <div class="opts">${q.o.map((o,k)=>`<button class="opt${pick===k+1?' sel':''}" data-a="${k+1}" ${done||closed?'disabled':''}><span class="n">${k+1}</span><span>${esc(o)}</span></button>`).join('')}</div>
+  <div class="bar"><i id="tb"></i></div><div class="tleft" id="tl"></div>
+  ${done?`<div class="msg">送信しました。正解の発表を待っています。</div>`:closed?`<div class="msg">締め切りました。正解の発表を待っています。</div>`:`<button class="btn" id="sub" ${pick?'':'disabled'}>この答えで送信</button>`}`;
+  document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{window._pick={n,a:+b.dataset.a};renderQ(q,n)});
+  const sb=$('#sub');if(sb)sb.onclick=async()=>{
+    if(sending||!window._pick)return;sending=true;sb.disabled=true;sb.textContent='送信中…';
+    const a=window._pick.a;const ok=await send({type:'ans',sid:S.sid,pid:S.pid,team:S.team,name:S.name,q:n,a});
+    sending=false;if(ok){S.ans[n]=a;save();renderQ(q,n)}else{sb.disabled=false;sb.textContent='送信できませんでした。もう一度押す'}
+  };
+  clearInterval(tick);const tot=CUR.dur*1000;
+  const up=()=>{const r=Math.max(0,CUR.deadline-Date.now());const tb=$('#tb'),tl=$('#tl');if(!tb)return;tb.style.width=(100*r/tot)+'%';tl.textContent=r>0?`残り ${Math.ceil(r/1000)} 秒`:'締め切り';if(r<=0){clearInterval(tick);if(S.ans[n]==null&&$('#sub'))renderQ(q,n)}};
+  up();tick=setInterval(up,250);
+}
+function renderReveal(q,n){
+  clearInterval(tick);const A=CUR.a;S.rev[n]=A;save();
+  const my=S.ans[n],ok=my===A;
+  $('#app').innerHTML=`<div class="qmeta"><span class="qno">QUESTION ${String(n).padStart(2,'0')} / ${QUIZ.length}</span>${lvTag(q)}</div>
+  <div class="q">${esc(q.q)}</div>
+  <div class="opts">${q.o.map((o,k)=>`<button class="opt ${k+1===A?'ok':(my===k+1?'sel ng':'ng')}" disabled><span class="n">${k+1}</span><span>${esc(o)}</span></button>`).join('')}</div>
+  <div class="res"><div class="r">${my==null?'未回答':ok?'正解！ +'+q.pts+'pt':'残念…'}</div><p>${CUR.e||''}</p><div class="pt">POINT ｜ ${esc(CUR.p||'')}</div></div>
+  <div class="score"><div><span>あなたの得点</span><b>${myScore()}</b></div><div><span>チーム</span><b style="font-size:24px">TEAM ${S.team}</b></div></div>`;
+}
+function renderEnd(){
+  clearInterval(tick);
+  $('#app').innerHTML=`<div class="kick">Finished</div><h1>おつかれさまでした</h1><p class="lead">結果は前の画面で発表します。</p>
+  <div class="score"><div><span>あなたの得点</span><b>${myScore()}</b></div><div><span>チーム</span><b style="font-size:24px">TEAM ${S.team}</b></div></div>`;
+}
+async function maybeJoin(){
+  if(!S.team||!S.sid||S.joinedSid===S.sid)return;
+  const ok=await send({type:'join',sid:S.sid,pid:S.pid,team:S.team,name:S.name});
+  if(ok){S.joinedSid=S.sid;save()}
+}
+function onCtl(m){
+  if(!m||!m.type)return;
+  if(m.type==='session'){
+    if(S.sid!==m.sid){S.sid=m.sid;S.ans={};S.rev={};S.joinedSid=null;save()}
+    CUR={type:'session',sid:m.sid};maybeJoin();return;
+  }
+  if(m.sid!==S.sid)return;
+  if(m.type==='open')CUR={type:'open',sid:m.sid,q:m.q,dur:m.dur,deadline:m._t*1000+SKEW+m.dur*1000};
+  else if(m.type==='reveal')CUR={type:'reveal',sid:m.sid,q:m.q,a:m.a,e:m.e,p:m.p};
+  else if(m.type==='end')CUR={type:'end',sid:m.sid};
+}
+let es=null,rt=null,first=true;
+function connect(){
+  try{es&&es.close()}catch(e){}
+  es=new EventSource(NET.base+NET.ctl+'/sse?since=all');
+  es.onmessage=ev=>{
+    let d;try{d=JSON.parse(ev.data)}catch(e){return}
+    if(d.event==='open'){SKEW=Date.now()-d.time*1000;live=true;render();return}
+    if(d.event!=='message')return;
+    let m;try{m=JSON.parse(d.message)}catch(e){return}
+    m._t=d.time;onCtl(m);clearTimeout(rt);rt=setTimeout(render,first?250:0);
+  };
+  es.onopen=()=>{live=true;render()};
+  es.onerror=()=>{live=false;$('#dot').classList.remove('on');$('#mel').textContent=S.team?`TEAM ${S.team}（再接続中）`:'再接続中…'};
+}
+render();connect();
+setTimeout(()=>{first=false},2500);
+</script>
+</body>
+</html>
