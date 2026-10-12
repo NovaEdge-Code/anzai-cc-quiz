@@ -15,7 +15,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku
 header{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .logos{display:flex;align-items:center;gap:8px}
 .logos img.a{height:17px}.logos img.n{height:19px}.logos i{font-style:normal;color:var(--sub);font-size:11px}
-.me{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px}
+.me{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px;max-width:44vw;overflow:hidden;white-space:nowrap}
+.me span:last-child{overflow:hidden;text-overflow:ellipsis}
 .dot{width:8px;height:8px;border-radius:50%;background:#B9BFCB}.dot.on{background:var(--teal)}
 .kick{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:.22em;color:var(--sub);text-transform:uppercase;margin-top:26px}
 h1{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;font-weight:600;font-size:30px;line-height:1.35;margin-top:10px;letter-spacing:.01em}
@@ -31,6 +32,10 @@ input{width:100%;font:inherit;font-size:16px;padding:14px 14px;border-radius:10p
 input:focus{border-color:var(--blue)}
 .btn{display:block;width:100%;margin-top:22px;padding:17px;border:0;border-radius:10px;background:var(--ink);color:#fff;font:inherit;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:.04em}
 .btn:disabled{opacity:.35}
+#sub{position:sticky;bottom:max(12px,env(safe-area-inset-bottom));box-shadow:0 0 0 8px var(--paper)}
+.mems{display:flex;flex-wrap:wrap;gap:8px}
+.mbtn{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:11px 18px;font:inherit;font-size:16px;color:var(--ink);cursor:pointer}
+.mbtn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:600}
 .panel{margin-top:22px;border-top:1px solid var(--line);padding-top:22px}
 .lv{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.06em}
@@ -78,20 +83,22 @@ const TP=(new URLSearchParams(location.search).get('t'))||TOPIC;
 const NET={base:'https://ntfy.sh/',ctl:TP+'-ctl',ans:TP+'-ans'};
 const LV={'初級':{c:'#00937F',n:1},'中級':{c:'#2B59E8',n:2},'上級':{c:'#1B2A4A',n:3}};
 const $=s=>document.querySelector(s);
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const escB=s=>esc(s).replace(/&lt;(\/?)b&gt;/g,'<$1b>');
 const KEY='anzai-quiz-player-'+TP;
-let S={pid:null,team:null,name:'',sid:null,ans:{},rev:{},joinedSid:null};
+let S={pid:null,team:null,name:'',sid:null,ans:{},rev:{},joinedSid:null,hist:{}};
 try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(v)S=Object.assign(S,v)}catch(e){}
 if(!S.pid)S.pid=Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+S.hist=S.hist||{};
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 save();
-let CUR=null;      // {type:'open'|'reveal'|'end'|'session', q, deadline}
-let SKEW=0, live=false, sel=null, sending=false;
+let CUR=null, SKEW=0, live=false, selT=null, selN=null, sending=false, settled=false;
 
 async function send(obj){
   for(let i=0;i<3;i++){
-    try{const r=await fetch(NET.base+NET.ans,{method:'POST',body:JSON.stringify(obj)});if(r.ok)return true}catch(e){}
-    await new Promise(r=>setTimeout(r,800*(i+1)));
+    try{const ac=new AbortController();const to=setTimeout(()=>ac.abort(),5000);
+      const r=await fetch(NET.base+NET.ans,{method:'POST',body:JSON.stringify(obj),signal:ac.signal});clearTimeout(to);if(r.ok)return true}catch(e){}
+    await new Promise(r=>setTimeout(r,900*(i+1)));
   }
   return false;
 }
@@ -101,8 +108,9 @@ function lvTag(q){const L=LV[q.level];return `<span class="lv" style="--lc:${L.c
 
 function render(){
   const t=S.team&&teamOf(S.team);
-  $('#mel').textContent=t?`TEAM ${t.id}${S.name?'・'+S.name:''}`:(live?'接続OK':'接続中…');
+  $('#mel').textContent=t?`TEAM ${t.id}・${S.name}`:(live?'接続OK':'接続中…');
   $('#dot').classList.toggle('on',live);
+  if(settled)maybeJoin();
   if(!t)return renderJoin();
   if(!CUR||CUR.type==='session'||(CUR.sid&&CUR.sid!==S.sid))return renderWait('まもなくクイズが始まります','前の画面に問題が出ると、ここにも表示されます。');
   if(CUR.type==='end')return renderEnd();
@@ -111,19 +119,23 @@ function render(){
   if(CUR.type==='reveal')return renderReveal(q,CUR.q);
 }
 function renderJoin(){
+  const t=selT&&teamOf(selT);
   $('#app').innerHTML=`<div class="kick">Claude Quiz — Join</div><h1>クイズで学ぶ Claude</h1>
-  <p class="lead">チームを選んで参加してください。全12問、初級・中級・上級の3段階です。</p>
-  <div class="lbl">チーム</div><div class="teams">${TEAMS.map(t=>`<button class="tbtn${sel===t.id?' on':''}" style="--tc:${t.c}" data-t="${t.id}"><b><i>${t.id}</i>TEAM ${t.id}</b><span>${t.m.join('・')}</span></button>`).join('')}</div>
-  <div class="lbl">ニックネーム（任意）</div><input id="nm" maxlength="12" placeholder="例：村井" value="${esc(S.name||'')}">
-  <button class="btn" id="go" ${sel?'':'disabled'}>参加する</button>`;
-  document.querySelectorAll('.tbtn').forEach(b=>b.onclick=()=>{sel=b.dataset.t;const v=$('#nm').value;renderJoin();$('#nm').value=v});
-  $('#go').onclick=()=>{S.team=sel;S.name=($('#nm').value||'').trim().slice(0,12);save();maybeJoin();render()};
+  <p class="lead">チームと名前を選んで参加してください。全12問、初級・中級・上級の3段階です。</p>
+  <div class="lbl">1. チーム</div><div class="teams">${TEAMS.map(x=>`<button class="tbtn${selT===x.id?' on':''}" style="--tc:${x.c}" data-t="${x.id}"><b><i>${x.id}</i>TEAM ${x.id}</b><span>${x.m.join('・')}</span></button>`).join('')}</div>
+  ${t?`<div class="lbl">2. あなたの名前</div><div class="mems">${t.m.map(m=>`<button class="mbtn${selN===m?' on':''}" data-n="${esc(m)}">${esc(m)}</button>`).join('')}<button class="mbtn${selN==='__other'?' on':''}" data-n="__other">その他</button></div>
+  ${selN==='__other'?`<input id="nm" maxlength="10" placeholder="名前を入力" style="margin-top:10px" value="${esc(S.name||'')}">`:''}`:''}
+  <button class="btn" id="go" ${t&&selN?'':'disabled'}>参加する</button>`;
+  document.querySelectorAll('.tbtn').forEach(b=>b.onclick=()=>{selT=b.dataset.t;selN=null;renderJoin()});
+  document.querySelectorAll('.mbtn').forEach(b=>b.onclick=()=>{selN=b.dataset.n;renderJoin();const i=$('#nm');if(i)i.focus()});
+  $('#go').onclick=()=>{let nm=selN==='__other'?(($('#nm')||{}).value||'').trim().slice(0,10):selN;if(!nm){alert('名前を入力してください');return}
+    S.team=selT;S.name=nm;S.joinedSid=null;save();render()};
 }
 function renderWait(h,p){
   $('#app').innerHTML=`<div class="wait"><div class="ring"></div><h1 style="font-size:24px">${h}</h1><p class="lead">${p}</p></div>
   <div class="score"><div><span>あなたの得点</span><b>${myScore()}</b></div><div><span>チーム</span><b style="font-size:24px">TEAM ${S.team}</b></div></div>
-  <div style="text-align:center"><button class="link" id="chg">チームを変更する</button></div>`;
-  $('#chg').onclick=()=>{if(confirm('チームを選び直しますか？')){sel=S.team;S.team=null;save();render()}};
+  <div style="text-align:center"><button class="link" id="chg">チーム・名前を変更する</button></div>`;
+  $('#chg').onclick=()=>{if(confirm('チームと名前を選び直しますか？')){selT=S.team;selN=null;S.team=null;save();render()}};
 }
 let tick=null;
 function renderQ(q,n){
@@ -133,7 +145,7 @@ function renderQ(q,n){
   <div class="q">${esc(q.q)}</div>
   <div class="opts">${q.o.map((o,k)=>`<button class="opt${pick===k+1?' sel':''}" data-a="${k+1}" ${done||closed?'disabled':''}><span class="n">${k+1}</span><span>${esc(o)}</span></button>`).join('')}</div>
   <div class="bar"><i id="tb"></i></div><div class="tleft" id="tl"></div>
-  ${done?`<div class="msg">送信しました。正解の発表を待っています。</div>`:closed?`<div class="msg">締め切りました。正解の発表を待っています。</div>`:`<button class="btn" id="sub" ${pick?'':'disabled'}>この答えで送信</button>`}`;
+  ${done?`<div class="msg">送信しました。正解の発表を待っています。</div>`:closed?`<div class="msg">締め切りました。正解の発表を待っています。</div>`:`<button class="btn" id="sub" ${pick?'':'disabled'}>${pick?pick+' 番で送信する':'番号を選んでください'}</button>`}`;
   document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{window._pick={n,a:+b.dataset.a};renderQ(q,n)});
   const sb=$('#sub');if(sb)sb.onclick=async()=>{
     if(sending||!window._pick)return;sending=true;sb.disabled=true;sb.textContent='送信中…';
@@ -145,12 +157,12 @@ function renderQ(q,n){
   up();tick=setInterval(up,250);
 }
 function renderReveal(q,n){
-  clearInterval(tick);const A=CUR.a;S.rev[n]=A;save();
+  clearInterval(tick);const A=CUR.a;
   const my=S.ans[n],ok=my===A;
   $('#app').innerHTML=`<div class="qmeta"><span class="qno">QUESTION ${String(n).padStart(2,'0')} / ${QUIZ.length}</span>${lvTag(q)}</div>
   <div class="q">${esc(q.q)}</div>
   <div class="opts">${q.o.map((o,k)=>`<button class="opt ${k+1===A?'ok':(my===k+1?'sel ng':'ng')}" disabled><span class="n">${k+1}</span><span>${esc(o)}</span></button>`).join('')}</div>
-  <div class="res"><div class="r">${my==null?'未回答':ok?'正解！ +'+q.pts+'pt':'残念…'}</div><p>${CUR.e||''}</p><div class="pt">POINT ｜ ${esc(CUR.p||'')}</div></div>
+  <div class="res"><div class="r">${my==null?'未回答':ok?'正解！ +'+q.pts+'pt':'残念…'}</div><p>${escB(CUR.e)}</p><div class="pt">POINT ｜ ${esc(CUR.p)}</div></div>
   <div class="score"><div><span>あなたの得点</span><b>${myScore()}</b></div><div><span>チーム</span><b style="font-size:24px">TEAM ${S.team}</b></div></div>`;
 }
 function renderEnd(){
@@ -158,38 +170,46 @@ function renderEnd(){
   $('#app').innerHTML=`<div class="kick">Finished</div><h1>おつかれさまでした</h1><p class="lead">結果は前の画面で発表します。</p>
   <div class="score"><div><span>あなたの得点</span><b>${myScore()}</b></div><div><span>チーム</span><b style="font-size:24px">TEAM ${S.team}</b></div></div>`;
 }
+let joining=false;
 async function maybeJoin(){
-  if(!S.team||!S.sid||S.joinedSid===S.sid)return;
-  const ok=await send({type:'join',sid:S.sid,pid:S.pid,team:S.team,name:S.name});
-  if(ok){S.joinedSid=S.sid;save()}
+  if(joining||!S.team||!S.sid||S.joinedSid===S.sid)return;joining=true;
+  const sid=S.sid;const ok=await send({type:'join',sid,pid:S.pid,team:S.team,name:S.name});
+  joining=false;if(ok&&S.sid===sid){S.joinedSid=sid;save()}
 }
 function onCtl(m){
   if(!m||!m.type)return;
   if(m.type==='session'){
-    if(S.sid!==m.sid){S.sid=m.sid;S.ans={};S.rev={};S.joinedSid=null;save()}
-    CUR={type:'session',sid:m.sid};maybeJoin();return;
+    if(S.sid!==m.sid){
+      if(S.sid)S.hist[S.sid]={ans:S.ans,rev:S.rev,j:S.joinedSid===S.sid};
+      const h=S.hist[m.sid]||{ans:{},rev:{},j:false};
+      S.sid=m.sid;S.ans=h.ans||{};S.rev=h.rev||{};S.joinedSid=h.j?m.sid:null;
+      const ks=Object.keys(S.hist);if(ks.length>6)delete S.hist[ks[0]];
+      save();
+    }
+    CUR={type:'session',sid:m.sid};return;
   }
   if(m.sid!==S.sid)return;
   if(m.type==='open')CUR={type:'open',sid:m.sid,q:m.q,dur:m.dur,deadline:m._t*1000+SKEW+m.dur*1000};
-  else if(m.type==='reveal')CUR={type:'reveal',sid:m.sid,q:m.q,a:m.a,e:m.e,p:m.p};
+  else if(m.type==='reveal'){S.rev[m.q]=m.a;save();CUR={type:'reveal',sid:m.sid,q:m.q,a:m.a,e:m.e,p:m.p}}
   else if(m.type==='end')CUR={type:'end',sid:m.sid};
 }
-let es=null,rt=null,first=true;
+let es=null,rt=null;
 function connect(){
   try{es&&es.close()}catch(e){}
   es=new EventSource(NET.base+NET.ctl+'/sse?since=all');
+  es.onopen=ev=>{live=true;if(ev&&ev.data){try{SKEW=Date.now()-JSON.parse(ev.data).time*1000}catch(e){}}render()};
   es.onmessage=ev=>{
     let d;try{d=JSON.parse(ev.data)}catch(e){return}
-    if(d.event==='open'){SKEW=Date.now()-d.time*1000;live=true;render();return}
     if(d.event!=='message')return;
     let m;try{m=JSON.parse(d.message)}catch(e){return}
-    m._t=d.time;onCtl(m);clearTimeout(rt);rt=setTimeout(render,first?250:0);
+    m._t=d.time;onCtl(m);clearTimeout(rt);rt=setTimeout(render,settled?0:300);
   };
-  es.onopen=()=>{live=true;render()};
-  es.onerror=()=>{live=false;$('#dot').classList.remove('on');$('#mel').textContent=S.team?`TEAM ${S.team}（再接続中）`:'再接続中…'};
+  es.onerror=()=>{live=false;$('#dot').classList.remove('on');$('#mel').textContent=S.team?`TEAM ${S.team}（再接続中）`:'再接続中…';
+    if(es.readyState===2)setTimeout(connect,3000)};
 }
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&(!es||es.readyState===2))connect()});
 render();connect();
-setTimeout(()=>{first=false},2500);
+setTimeout(()=>{settled=true;render()},2500);
 </script>
 </body>
 </html>
