@@ -74,11 +74,12 @@ input:focus{border-color:var(--blue)}
 </div>
 <script src="quiz.js"></script>
 <script>
-const NET={base:'https://ntfy.sh/',ctl:TOPIC+'-ctl',ans:TOPIC+'-ans'};
+const TP=(new URLSearchParams(location.search).get('t'))||TOPIC;
+const NET={base:'https://ntfy.sh/',ctl:TP+'-ctl',ans:TP+'-ans'};
 const LV={'初級':{c:'#00937F',n:1},'中級':{c:'#2B59E8',n:2},'上級':{c:'#1B2A4A',n:3}};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const KEY='anzai-quiz-player-'+TOPIC;
+const KEY='anzai-quiz-player-'+TP;
 let S={pid:null,team:null,name:'',sid:null,ans:{},rev:{},joinedSid:null};
 try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(v)S=Object.assign(S,v)}catch(e){}
 if(!S.pid)S.pid=Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
